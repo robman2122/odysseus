@@ -256,12 +256,13 @@ def _build_mcp_args(tool: str, content: str) -> Dict:
 async def _call_mcp_tool(
     tool: str,
     content: str,
+    owner: Optional[str] = None,
     progress_cb: Optional[Callable[[Dict], Awaitable[None]]] = None,
 ) -> Dict:
     """Route a legacy tool call through the MCP manager, with direct fallbacks."""
     mcp = get_mcp_manager()
     if not mcp:
-        return await _direct_fallback(tool, content, progress_cb=progress_cb) or {"error": f"MCP manager not available for tool '{tool}'", "exit_code": 1}
+        return await _direct_fallback(tool, content, owner=owner, progress_cb=progress_cb) or {"error": f"MCP manager not available for tool '{tool}'", "exit_code": 1}
 
     server_id, tool_name = _MCP_TOOL_MAP[tool]
     qualified = f"mcp__{server_id}__{tool_name}"
@@ -270,7 +271,7 @@ async def _call_mcp_tool(
 
     # If MCP server not connected, try direct fallback
     if isinstance(result, dict) and result.get("exit_code") == 1 and "not connected" in result.get("error", ""):
-        fallback = await _direct_fallback(tool, content, progress_cb=progress_cb)
+        fallback = await _direct_fallback(tool, content, owner=owner, progress_cb=progress_cb)
         if fallback:
             return fallback
 
@@ -683,7 +684,7 @@ async def execute_tool_block(
     if tool in _MCP_TOOL_MAP:
         first_line = content.split(chr(10))[0][:80]
         desc = f"{tool}: {first_line}"
-        result = await _call_mcp_tool(tool, content, progress_cb=progress_cb)
+        result = await _call_mcp_tool(tool, content, owner=owner, progress_cb=progress_cb)
     elif tool == "create_document":
         title = content.split("\n")[0].strip()[:60]
         desc = f"create_document: {title}"
