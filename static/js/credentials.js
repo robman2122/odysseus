@@ -3,7 +3,7 @@
  * Handles CRUD operations for the secure password vault.
  */
 
-import { storage } from './storage.js';
+import Storage from './storage.js';
 
 export const credentials = {
     modal: null,
@@ -77,7 +77,7 @@ export const credentials = {
     async load() {
         try {
             const resp = await fetch('/api/credentials', {
-                headers: { 'Authorization': `Bearer ${storage.get('token')}` }
+                headers: { 'Authorization': `Bearer ${Storage.get('token')}` }
             });
             if (!resp.ok) throw new Error('Failed to load credentials');
             const data = await resp.json();
@@ -131,7 +131,7 @@ export const credentials = {
                 method,
                 headers: { 
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${storage.get('token')}`
+                    'Authorization': `Bearer ${Storage.get('token')}`
                 },
                 body: JSON.stringify(body)
             });
@@ -163,7 +163,7 @@ export const credentials = {
         try {
             const resp = await fetch(`/api/credentials/${id}`, {
                 method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${storage.get('token')}` }
+                headers: { 'Authorization': `Bearer ${Storage.get('token')}` }
             });
             if (!resp.ok) throw new Error('Failed to delete secret');
             this.load();
