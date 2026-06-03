@@ -4075,3 +4075,38 @@ async def do_vault_unlock(content: str, owner: Optional[str] = None) -> Dict:
         pass
 
     return {"output": "Vault unlocked. Session saved.", "exit_code": 0}
+
+
+# ── Native Secrets / Password Vault tools ──
+
+async def do_manage_secrets(content: str, owner: Optional[str] = None) -> Dict:
+    """List available native secrets. Secrets are injected as ODYSSEUS_SECRET_{NAME} in bash/python."""
+    from core.database import SessionLocal, Credential
+    try:
+        args = _parse_tool_args(content)
+    except ValueError:
+        return {"error": "Invalid JSON arguments", "exit_code": 1}
+
+    action = args.get("action", "list")
+    if action != "list":
+        return {"error": f"Unsupported action '{action}'. Only 'list' is supported.", "exit_code": 1}
+
+    db = SessionLocal()
+    try:
+        creds = db.query(Credential).filter(Credential.owner == owner).all()
+        if not creds:
+            return {"output": "No secrets found in the vault.", "exit_code": 0}
+
+        lines = ["Available secrets (accessible as environment variables):"]
+        for c in creds:
+            lines.append(f"- ODYSSEUS_SECRET_{c.name}: {c.description or 'No description'}")
+        
+        lines.append("\nTo use a secret in bash, use: $ODYSSEUS_SECRET_NAME")
+        lines.append("To use a secret in python, use: os.environ['ODYSSEUS_SECRET_NAME']")
+        return {"output": "\n".join(lines), "exit_code": 0}
+    except Exception as e:
+        logger.error(f"manage_secrets error: {e}")
+        return {"error": str(e), "exit_code": 1}
+    finally:
+        db.close()
+

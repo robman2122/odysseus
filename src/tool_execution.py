@@ -296,6 +296,7 @@ def _split_bg_marker(content: str):
 async def _direct_fallback(
     tool: str,
     content: str,
+    owner: Optional[str] = None,
     progress_cb: Optional[Callable[[Dict], Awaitable[None]]] = None,
 ) -> Optional[Dict]:
     """In-process execution path for the eight tools that used to live as
@@ -324,6 +325,31 @@ async def _direct_fallback(
         "LINES": "40",
     }
 
+    _secrets_dict = {}
+    if owner:
+        try:
+            from core.database import SessionLocal, Credential
+            db = SessionLocal()
+            try:
+                creds = db.query(Credential).filter(Credential.owner == owner).all()
+                for c in creds:
+                    if c.value:
+                        _subproc_env[f"ODYSSEUS_SECRET_{c.name}"] = c.value
+                        _secrets_dict[c.name] = c.value
+            finally:
+                db.close()
+        except Exception as e:
+            logger.error(f"Failed to inject secrets: {e}")
+
+    def _mask_secrets(text: str) -> str:
+        if not text or not _secrets_dict:
+            return text
+        masked = text
+        for _, val in _secrets_dict.items():
+            if val and len(val) > 3:  # don't mask tiny things accidentally
+                masked = masked.replace(val, "***SECRET***")
+        return masked
+
     try:
         if tool == "bash":
             proc = await asyncio.create_subprocess_shell(
@@ -332,11 +358,19 @@ async def _direct_fallback(
                 stderr=asyncio.subprocess.PIPE,
                 env=_subproc_env,
             )
+            # Wrap progress callback to mask secrets in SSE events
+            async def masked_progress_cb(payload: Dict):
+                if progress_cb and "tail" in payload:
+                    payload["tail"] = _mask_secrets(payload["tail"])
+                    await progress_cb(payload)
+
             stdout, stderr, rc, timed_out = await _run_subprocess_streaming(
                 proc,
                 timeout=DEFAULT_BASH_TIMEOUT,
-                progress_cb=progress_cb,
+                progress_cb=masked_progress_cb if progress_cb else None,
             )
+            stdout = _mask_secrets(stdout)
+            stderr = _mask_secrets(stderr)
             if timed_out:
                 return {"error": f"bash: timed out after {DEFAULT_BASH_TIMEOUT}s — process killed", "exit_code": 124, "stdout": _truncate(stdout, MAX_OUTPUT_CHARS), "stderr": _truncate(stderr, MAX_OUTPUT_CHARS)}
             output = stdout.rstrip()
@@ -358,19 +392,20 @@ async def _direct_fallback(
                 stderr=asyncio.subprocess.PIPE,
                 env=_subproc_env,
             )
+            # Wrap progress callback to mask secrets in SSE events
+            async def masked_progress_cb(payload: Dict):
+                if progress_cb and "tail" in payload:
+                    payload["tail"] = _mask_secrets(payload["tail"])
+                    await progress_cb(payload)
+
             stdout, stderr, rc, timed_out = await _run_subprocess_streaming(
                 proc,
                 timeout=DEFAULT_PYTHON_TIMEOUT,
-                progress_cb=progress_cb,
+                progress_cb=masked_progress_cb if progress_cb else None,
             )
-            if timed_out:
-                return {"error": f"python: timed out after {DEFAULT_PYTHON_TIMEOUT}s — process killed", "exit_code": 124, "stdout": _truncate(stdout, MAX_OUTPUT_CHARS), "stderr": _truncate(stderr, MAX_OUTPUT_CHARS)}
-            output = stdout.rstrip()
-            err = stderr.rstrip()
-            if err:
-                output = (output + "\nSTDERR: " + err).strip() if output else "STDERR: " + err
-            output = _truncate(output, MAX_OUTPUT_CHARS)
-            return {"output": output or "(no output)", "exit_code": rc or 0}
+            stdout = _mask_secrets(stdout)
+            stderr = _mask_secrets(stderr)
+
 
         if tool == "read_file":
             path = os.path.expanduser(content.split("\n", 1)[0].strip())
@@ -551,6 +586,7 @@ async def execute_tool_block(
         do_manage_skills, do_api_call, do_manage_endpoints,
         do_manage_mcp, do_manage_webhooks, do_manage_tokens,
         do_manage_documents, do_manage_settings, do_manage_notes,
+        do_manage_secrets,
         do_manage_calendar,
         do_download_model, do_serve_model, do_list_served_models, do_stop_served_model,
         do_list_downloads, do_cancel_download, do_search_hf_models, do_list_cached_models,
@@ -699,6 +735,9 @@ async def execute_tool_block(
     elif tool == "manage_settings":
         desc = "manage_settings"
         result = await do_manage_settings(content, owner=owner)
+    elif tool == "manage_secrets":
+        desc = "manage_secrets"
+        result = await do_manage_secrets(content, owner=owner)
     elif tool == "manage_notes":
         desc = "manage_notes"
         result = await do_manage_notes(content, owner=owner)

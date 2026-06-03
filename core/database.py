@@ -1412,6 +1412,17 @@ class Integration(TimestampMixin, Base):
     enabled = Column(Boolean, default=True)
 
 
+class Credential(TimestampMixin, Base):
+    """User-stored secret (password, API key, etc.). Encrypted at rest."""
+    __tablename__ = "credentials"
+
+    id          = Column(String, primary_key=True, index=True)
+    owner       = Column(String, nullable=True, index=True)
+    name        = Column(String, nullable=False)
+    value       = Column(EncryptedText, nullable=False)
+    description = Column(Text, nullable=True)
+
+
 
 
 
@@ -1483,6 +1494,39 @@ def _migrate_seed_email_account():
         logging.getLogger(__name__).warning(f"seed email account migration: {e}")
 
 
+def _migrate_add_credential_table():
+    """Create credentials table if it doesn't exist. Guarded."""
+    import sqlite3
+    db_path = DATABASE_URL.replace("sqlite:///", "")
+    if not os.path.exists(db_path):
+        return
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='credentials'")
+        if not cursor.fetchone():
+            # Minimal CREATE TABLE that matches the declarative model.
+            # Base.metadata.create_all handles this normally, but we use these
+            # migrations for incremental schema updates on existing installs.
+            conn.execute("""
+                CREATE TABLE credentials (
+                    id VARCHAR PRIMARY KEY,
+                    owner VARCHAR,
+                    name VARCHAR NOT NULL,
+                    value TEXT NOT NULL,
+                    description TEXT,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL
+                )
+            """)
+            conn.execute("CREATE INDEX ix_credentials_id ON credentials (id)")
+            conn.execute("CREATE INDEX ix_credentials_owner ON credentials (owner)")
+            conn.commit()
+            logging.getLogger(__name__).info("Migrated: created 'credentials' table")
+        conn.close()
+    except Exception as e:
+        logging.getLogger(__name__).warning(f"credentials migration failed: {e}")
+
+
 def init_db():
     """
     Initialize the database by creating all tables.
@@ -1523,6 +1567,7 @@ def init_db():
     _migrate_encrypt_email_passwords()
     _migrate_encrypt_signatures()
     _migrate_encrypt_endpoint_keys()
+    _migrate_add_credential_table()
 
 
 def _migrate_encrypt_endpoint_keys():

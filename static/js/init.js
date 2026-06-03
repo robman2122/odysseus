@@ -2,6 +2,7 @@
 // ES6 module — extracted from index.html inline scripts
 
 import Storage from './storage.js';
+import { credentials } from './credentials.js';
 
 function clearFreshComposerRestore() {
   const msgInput = document.getElementById('message');
@@ -370,3 +371,8 @@ window.addEventListener('pageshow', clearFreshComposerRestore);
   else window.addEventListener('load', release);
   setTimeout(release, 1200);  // hard fallback — never leave the splash hidden
 })();
+
+// Initialize Credentials UI
+if (typeof credentials !== 'undefined' && credentials.init) {
+    credentials.init();
+}

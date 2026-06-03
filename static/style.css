@@ -13314,6 +13314,39 @@ body:has(.doc-version-panel:not(.hidden)) .hamburger-btn {
   transition: max-height 0.3s ease, opacity 0.2s ease, padding 0.2s ease;
   overflow: hidden;
 }
+
+/* Secret Management Styles */
+.secret-item {
+  transition: border-color 0.2s, background 0.2s;
+}
+.secret-item:hover {
+  border-color: color-mix(in srgb, var(--fg) 20%, transparent) !important;
+  background: color-mix(in srgb, var(--fg) 5%, transparent) !important;
+}
+.btn-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  color: var(--fg);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0.6;
+  transition: opacity 0.2s, background 0.2s, border-color 0.2s;
+}
+.btn-icon:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--fg) 8%, transparent);
+  border-color: var(--border);
+}
+.btn-icon.danger:hover {
+  color: #ff4d4d;
+  background: rgba(255, 77, 77, 0.1);
+  border-color: rgba(255, 77, 77, 0.2);
+}
 .mcp-tools-panel.hidden {
   max-height: 0 !important;
   opacity: 0;

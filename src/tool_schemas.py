@@ -579,6 +579,20 @@ FUNCTION_TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "manage_secrets",
+            "description": "List available user secrets from the secure vault. Secrets are securely injected into python/bash executions as environment variables: ODYSSEUS_SECRET_{NAME}.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "enum": ["list"]}
+                },
+                "required": ["action"]
+            }
+        }
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "manage_mcp",
             "description": "Manage MCP (Model Context Protocol) tool servers: list servers and their tools, add new servers, delete, enable/disable, reconnect, or list all available tools.",
             "parameters": {
