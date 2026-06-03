@@ -4099,9 +4099,10 @@ async def do_manage_secrets(content: str, owner: Optional[str] = None) -> Dict:
 
         lines = ["Available secrets (accessible as environment variables):"]
         for c in creds:
-            lines.append(f"- ODYSSEUS_SECRET_{c.name}: {c.description or 'No description'}")
+            safe_name = re.sub(r'[^A-Za-z0-9_]', '_', c.name.upper())
+            lines.append(f"- ODYSSEUS_SECRET_{safe_name}: {c.description or 'No description'} (Original name: {c.name})")
         
-        lines.append("\nTo use a secret in bash, use: $ODYSSEUS_SECRET_NAME")
+        lines.append("\nTo use a secret in bash, use: ${ODYSSEUS_SECRET_NAME}")
         lines.append("To use a secret in python, use: os.environ['ODYSSEUS_SECRET_NAME']")
         return {"output": "\n".join(lines), "exit_code": 0}
     except Exception as e:

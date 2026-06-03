@@ -335,7 +335,8 @@ async def _direct_fallback(
                 creds = db.query(Credential).filter(Credential.owner == owner).all()
                 for c in creds:
                     if c.value:
-                        _subproc_env[f"ODYSSEUS_SECRET_{c.name}"] = c.value
+                        safe_name = re.sub(r'[^A-Za-z0-9_]', '_', c.name.upper())
+                        _subproc_env[f"ODYSSEUS_SECRET_{safe_name}"] = c.value
                         _secrets_dict[c.name] = c.value
             finally:
                 db.close()
