@@ -805,6 +805,7 @@ def setup_cookbook_routes() -> APIRouter:
         # many downstream `"engine" in req.cmd` membership checks can't hit
         # `TypeError: argument of type 'NoneType'` (a 500 instead of a clean 400).
         req.cmd = _validate_serve_cmd(req.cmd) or ""
+        logger.info("DEBUG SERVE COMMAND: %s", req.cmd)
         is_pip_install = bool(req.cmd and "pip install" in req.cmd)
         if is_pip_install:
             # PEP-508-style package spec — letters, digits, `.-_` for the

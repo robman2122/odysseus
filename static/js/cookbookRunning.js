@@ -746,7 +746,7 @@ export async function _syncFromServer() {
       // it here — doing so silently snapped the active host back to whatever was
       // saved server-side, so downloads/scans ignored what the user just
       // picked. Sync only the shared non-secret settings (servers list, gpus, paths).
-      const { remoteHost: _rh, env: _e, envPath: _ep, platform: _pf, ...settings } = state.env;
+      const { remoteHost: _rh, ...settings } = state.env;
       delete settings.hfToken;
       Object.assign(_envState, settings);
       const { hfToken, ...safeState } = _envState;

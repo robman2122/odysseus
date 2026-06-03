@@ -725,9 +725,11 @@ async function _fetchDependencies() {
 function _applyServerSelection(val) {
   if (val === 'local') {
     _envState.remoteHost = '';
-    _envState.env = 'none';
-    _envState.envPath = '';
-    _envState.platform = '';
+    // Patched: respect local server settings instead of resetting to none
+    const _lsrv = _envState.servers.find(s => !s.host || s.host === 'local');
+    _envState.env = _lsrv?.env || 'none';
+    _envState.envPath = _lsrv?.envPath || '';
+    _envState.platform = _lsrv?.platform || '';
   } else {
     const s = _serverByVal(val);
     if (s) {
