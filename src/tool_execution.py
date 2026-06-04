@@ -12,6 +12,7 @@ import collections
 import json
 import logging
 import os
+import re
 import sys
 import time
 from typing import Any, Awaitable, Callable, Dict, Optional, Tuple
@@ -336,10 +337,11 @@ async def _direct_fallback(
                 for c in creds:
                     if c.value:
                         safe_name = re.sub(r'[^A-Za-z0-9_]', '_', c.name.upper())
-                        _subproc_env[f"ODYSSEUS_SECRET_{safe_name}"] = c.value
-                        _secrets_dict[c.name] = c.value
+                        _subproc_env[f"ODYSSEUS_SECRET_{safe_name}"] = str(c.value)
+                        _secrets_dict[c.name] = str(c.value)
             finally:
                 db.close()
+            logger.info(f"Injected {len(_secrets_dict)} secrets into environment for owner {owner}")
         except Exception as e:
             logger.error(f"Failed to inject secrets: {e}")
 
